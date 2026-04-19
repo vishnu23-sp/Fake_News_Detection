@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TruthLens</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --black:#0a0a0a;--white:#f5f2eb;--cream:#ede9df;
+      --mid:#6b6b6b;--border:#2a2a2a;--border-light:#3a3a3a;
+      --true:#2ecc71;--false:#e74c3c;--uncertain:#f39c12;
+    }
+    body{width:360px;background:var(--black);color:var(--white);font-family:'DM Sans',sans-serif;font-weight:300;min-height:200px;}
+
+    /* ── Header ── */
+    .header{padding:0.9rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+    .logo{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:0.08em;}
+    .logo span{color:var(--false);}
+    .user-pill{font-size:0.6rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--mid);border:1px solid var(--border);padding:2px 7px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+    /* ── Login ── */
+    #login-section{padding:1.2rem 1rem;}
+    .login-title{font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:0.05em;margin-bottom:0.3rem;}
+    .login-sub{font-size:0.75rem;color:var(--mid);margin-bottom:1.2rem;line-height:1.5;}
+    .field{margin-bottom:0.8rem;}
+    .field label{display:block;font-size:0.6rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--mid);margin-bottom:0.3rem;}
+    .field input{width:100%;background:transparent;border:1px solid var(--border);color:var(--white);font-family:'DM Sans',sans-serif;font-size:0.85rem;padding:0.6rem 0.8rem;outline:none;transition:border-color 0.2s;}
+    .field input:focus{border-color:var(--border-light);}
+    .field input::placeholder{color:#3a3a3a;}
+    .btn{width:100%;background:var(--white);color:var(--black);border:none;font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:0.15em;padding:0.7rem;cursor:pointer;transition:background 0.15s;margin-top:0.3rem;}
+    .btn:hover{background:var(--cream);}
+    .btn:disabled{opacity:0.4;cursor:not-allowed;}
+    .err{font-size:0.75rem;color:var(--false);margin-bottom:0.8rem;display:none;line-height:1.5;}
+    .err.visible{display:block;}
+
+    /* ── Main ── */
+    #main-section{padding:1rem;}
+    .input-label{font-size:0.6rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--mid);margin-bottom:0.4rem;display:block;}
+    textarea{width:100%;background:transparent;border:1px solid var(--border);color:var(--white);font-family:'DM Sans',sans-serif;font-size:0.85rem;font-weight:300;padding:0.7rem 0.8rem;resize:none;outline:none;line-height:1.5;height:80px;transition:border-color 0.2s;}
+    textarea::placeholder{color:#3a3a3a;}
+    textarea:focus{border-color:var(--border-light);}
+    .analyze-btn{width:100%;background:var(--white);color:var(--black);border:none;font-family:'Bebas Neue',sans-serif;font-size:0.95rem;letter-spacing:0.15em;padding:0.65rem;cursor:pointer;transition:background 0.15s;margin-top:0.6rem;}
+    .analyze-btn:hover{background:var(--cream);}
+    .analyze-btn:disabled{opacity:0.4;cursor:not-allowed;}
+
+    /* ── Loading bar ── */
+    .loading-bar{height:2px;background:var(--border);margin-top:0.6rem;overflow:hidden;display:none;}
+    .loading-bar.active{display:block;}
+    .loading-bar::after{content:'';display:block;height:100%;width:40%;background:var(--white);animation:sweep 1.2s ease-in-out infinite;}
+    @keyframes sweep{0%{transform:translateX(-100%)}100%{transform:translateX(350%)}}
+
+    /* ── Result ── */
+    #result-section{padding:0.8rem 1rem 1rem;border-top:1px solid var(--border);display:none;}
+    #result-section.visible{display:block;}
+    .verdict-row{display:flex;align-items:center;gap:0.8rem;margin-bottom:0.8rem;}
+    .verdict-icon{font-size:1.5rem;line-height:1;}
+    .verdict-label-sm{font-size:0.55rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--mid);}
+    .verdict-word-sm{font-family:'Bebas Neue',sans-serif;font-size:1.8rem;line-height:1;letter-spacing:0.05em;}
+    .verdict-word-sm.true{color:var(--true);}
+    .verdict-word-sm.false{color:var(--false);}
+    .verdict-word-sm.uncertain{color:var(--uncertain);}
+    .result-label{font-size:0.55rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--mid);margin-bottom:0.3rem;margin-top:0.4rem;}
+    .result-text{font-size:0.78rem;color:#c8c4ba;line-height:1.6;margin-bottom:0.5rem;}
+    .corrected{font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--white);background:#141414;padding:0.6rem 0.8rem;border-left:2px solid var(--mid);line-height:1.6;word-break:break-word;}
+
+    /* ── Footer ── */
+    .popup-footer{padding:0.6rem 1rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+    .open-link{font-size:0.6rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--mid);text-decoration:none;transition:color 0.15s;}
+    .open-link:hover{color:var(--white);}
+    .logout-link{font-size:0.6rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--mid);background:none;border:none;cursor:pointer;transition:color 0.15s;}
+    .logout-link:hover{color:var(--false);}
+
+    /* ── Model badge ── */
+    .model-tag{font-size:0.55rem;letter-spacing:0.1em;color:#333;text-align:center;padding:4px 0 0;font-family:'DM Mono',monospace;}
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">Truth<span>Lens</span></div>
+    <div class="user-pill" id="ext-user-pill">Not signed in</div>
+  </div>
+
+  <!-- Login Section -->
+  <div id="login-section">
+    <div class="login-title">Sign In</div>
+    <div class="login-sub">Use your TruthLens account to fact-check from anywhere.</div>
+    <div class="err" id="ext-err"></div>
+    <div class="field">
+      <label>Email</label>
+      <input type="email" id="ext-email" placeholder="you@example.com"/>
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" id="ext-password" placeholder="••••••••"/>
+    </div>
+    <button class="btn" id="ext-login-btn">SIGN IN</button>
+    <div class="model-tag">llama3.1:8b · Tavily · local</div>
+  </div>
+
+  <!-- Main Section -->
+  <div id="main-section" style="display:none;">
+    <label class="input-label">Claim or URL to fact-check</label>
+    <textarea id="ext-input" placeholder="Paste a claim, headline, or article URL…&#10;Ctrl+Enter to analyze"></textarea>
+    <button class="analyze-btn" id="ext-analyze-btn">ANALYZE</button>
+    <div class="loading-bar" id="ext-loading"></div>
+    <!-- status tip injected here by popup.js -->
+  </div>
+
+  <!-- Result Section -->
+  <div id="result-section">
+    <div class="verdict-row">
+      <div class="verdict-icon" id="ext-icon"></div>
+      <div>
+        <div class="verdict-label-sm">Verdict</div>
+        <div class="verdict-word-sm" id="ext-verdict"></div>
+      </div>
+    </div>
+    <div class="result-label">Explanation</div>
+    <div class="result-text" id="ext-explanation"></div>
+    <div class="result-label" id="corrected-label">Corrected statement</div>
+    <div class="corrected" id="ext-corrected"></div>
+  </div>
+
+  <!-- Footer -->
+  <div class="popup-footer">
+    <a class="open-link" href="http://localhost:5000" target="_blank">Open TruthLens ↗</a>
+    <button class="logout-link" id="ext-logout" style="display:none;">Sign out</button>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TruthLens — Sign In</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --black:#0a0a0a;--white:#f5f2eb;--cream:#ede9df;
+      --mid:#6b6b6b;--border:#2a2a2a;--border-light:#3a3a3a;
+      --true:#2ecc71;--false:#e74c3c;--uncertain:#f39c12;
+    }
+    html,body{min-height:100vh;background:var(--black);color:var(--white);font-family:'DM Sans',sans-serif;font-weight:300;}
+    body::after{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(245,242,235,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(245,242,235,0.025) 1px,transparent 1px);background-size:60px 60px;pointer-events:none;z-index:0;}
+    .page{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column;}
+    header{border-bottom:1px solid var(--border);padding:1.4rem 2rem;display:flex;align-items:baseline;gap:1rem;}
+    .logo{font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:0.08em;color:var(--white);}
+    .logo span{color:var(--false);}
+    .tagline{font-size:0.68rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--mid);}
+    .main{flex:1;display:flex;align-items:center;justify-content:center;padding:3rem 1rem;}
+    .auth-box{width:100%;max-width:440px;}
+    .auth-tabs{display:flex;border:1px solid var(--border);margin-bottom:2rem;}
+    .tab{flex:1;padding:0.9rem;text-align:center;font-size:0.72rem;letter-spacing:0.2em;text-transform:uppercase;cursor:pointer;color:var(--mid);transition:all 0.2s;background:transparent;border:none;}
+    .tab.active{background:var(--white);color:var(--black);}
+    .form-section{display:none;}
+    .form-section.active{display:block;}
+    .form-title{font-family:'Bebas Neue',sans-serif;font-size:2.4rem;letter-spacing:0.05em;margin-bottom:0.4rem;}
+    .form-sub{font-size:0.85rem;color:var(--mid);margin-bottom:2rem;line-height:1.6;}
+    .field{margin-bottom:1.2rem;}
+    .field label{display:block;font-size:0.65rem;letter-spacing:0.25em;text-transform:uppercase;color:var(--mid);margin-bottom:0.5rem;}
+    .field input{width:100%;background:transparent;border:1px solid var(--border);color:var(--white);font-family:'DM Sans',sans-serif;font-size:0.95rem;font-weight:300;padding:0.9rem 1rem;outline:none;transition:border-color 0.2s;}
+    .field input:focus{border-color:var(--border-light);}
+    .field input::placeholder{color:#3a3a3a;}
+    .field input.invalid{border-color:rgba(231,76,60,0.5);}
+    .field input.valid{border-color:rgba(46,204,113,0.4);}
+    .pw-strength{margin-top:0.6rem;display:none;}
+    .pw-strength.show{display:block;}
+    .pw-bar-row{display:flex;gap:3px;margin-bottom:0.5rem;}
+    .pw-bar{flex:1;height:3px;background:var(--border);transition:background 0.3s;}
+    .pw-bar.weak{background:var(--false);}
+    .pw-bar.fair{background:var(--uncertain);}
+    .pw-bar.strong{background:var(--true);}
+    .pw-rules{display:grid;grid-template-columns:1fr 1fr;gap:0.3rem 0.8rem;}
+    .pw-rule{font-size:0.7rem;color:var(--mid);display:flex;align-items:center;gap:0.35rem;transition:color 0.2s;}
+    .pw-rule.met{color:var(--true);}
+    .pw-rule-dot{width:5px;height:5px;border-radius:50%;background:var(--border);flex-shrink:0;transition:background 0.2s;}
+    .pw-rule.met .pw-rule-dot{background:var(--true);}
+    .btn-submit{width:100%;background:var(--white);color:var(--black);border:none;font-family:'Bebas Neue',sans-serif;font-size:1.15rem;letter-spacing:0.15em;padding:1rem;cursor:pointer;transition:background 0.15s;margin-top:0.5rem;}
+    .btn-submit:hover{background:var(--cream);}
+    .btn-submit:disabled{opacity:0.4;cursor:not-allowed;}
+    .divider{display:flex;align-items:center;gap:0.8rem;margin:1.4rem 0;}
+    .divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border);}
+    .divider span{font-size:0.65rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--mid);white-space:nowrap;}
+    .btn-google{width:100%;background:transparent;border:1px solid var(--border);color:var(--white);font-family:'DM Sans',sans-serif;font-size:0.88rem;font-weight:400;padding:0.85rem 1rem;cursor:pointer;transition:border-color 0.2s,background 0.2s;display:flex;align-items:center;justify-content:center;gap:0.75rem;}
+    .btn-google:hover{border-color:var(--border-light);background:#111;}
+    .btn-google:disabled{opacity:0.4;cursor:not-allowed;}
+    .btn-google svg{width:18px;height:18px;flex-shrink:0;}
+    .forgot-link{display:block;text-align:right;font-size:0.72rem;color:var(--mid);text-decoration:none;margin-top:-0.4rem;margin-bottom:1.2rem;letter-spacing:0.05em;transition:color 0.15s;}
+    .forgot-link:hover{color:var(--white);}
+    .error-msg{background:rgba(231,76,60,0.1);border:1px solid rgba(231,76,60,0.3);color:#e74c3c;font-size:0.85rem;padding:0.8rem 1rem;margin-bottom:1rem;display:none;}
+    .error-msg.visible{display:block;}
+    .success-msg{background:rgba(46,204,113,0.1);border:1px solid rgba(46,204,113,0.3);color:#2ecc71;font-size:0.85rem;padding:0.8rem 1rem;margin-bottom:1rem;display:none;}
+    .success-msg.visible{display:block;}
+    footer{border-top:1px solid var(--border);padding:1rem 2rem;display:flex;justify-content:space-between;}
+    .footer-text{font-size:0.65rem;letter-spacing:0.15em;text-transform:uppercase;color:#3a3a3a;}
+  </style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div class="logo">Truth<span>Lens</span></div>
+    <div class="tagline">AI-powered fact verification</div>
+  </header>
+
+  <div class="main">
+    <div class="auth-box">
+      <div class="auth-tabs">
+        <button class="tab active" onclick="switchTab('login')">Sign In</button>
+        <button class="tab" onclick="switchTab('register')">Create Account</button>
+      </div>
+
+      <!-- LOGIN -->
+      <div class="form-section active" id="login-section">
+        <div class="form-title">Welcome Back</div>
+        <div class="form-sub">Sign in to access your fact-checking history.</div>
+        <div class="error-msg" id="login-error"></div>
+
+        <!-- ✅ YOUR GOOGLE CLIENT ID IS SET HERE -->
+        <div id="g_id_onload"
+             data-client_id="420980687236-s5sh0lr3ntbmah90g0ss63iq20m2afrl.apps.googleusercontent.com"
+             data-callback="handleGoogleCredential"
+             data-auto_prompt="false">
+        </div>
+
+        <button class="btn-google" id="google-login-btn" onclick="triggerGoogleSignIn()">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+          </svg>
+          Continue with Google
+        </button>
+
+        <div class="divider"><span>or sign in with email</span></div>
+
+        <div class="field">
+          <label>Email Address</label>
+          <input type="email" id="login-email" placeholder="you@example.com" oninput="clearLoginError()"/>
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input type="password" id="login-password" placeholder="••••••••" oninput="clearLoginError()" onkeydown="if(event.key==='Enter')doLogin()"/>
+        </div>
+        <a class="forgot-link" href="/forgot-password">Forgot password?</a>
+        <button class="btn-submit" id="login-btn" onclick="doLogin()">SIGN IN</button>
+      </div>
+
+      <!-- REGISTER -->
+      <div class="form-section" id="register-section">
+        <div class="form-title">Create Account</div>
+        <div class="form-sub">Join TruthLens to save your analysis history.</div>
+        <div class="error-msg" id="reg-error"></div>
+        <div class="success-msg" id="reg-success"></div>
+
+        <button class="btn-google" id="google-reg-btn" onclick="triggerGoogleSignIn()">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+          </svg>
+          Sign up with Google
+        </button>
+
+        <div class="divider"><span>or create with email</span></div>
+
+        <div class="field">
+          <label>Full Name</label>
+          <input type="text" id="reg-name" placeholder="Vishnu S" oninput="validateName(this)"/>
+        </div>
+        <div class="field">
+          <label>Email Address</label>
+          <input type="email" id="reg-email" placeholder="you@example.com" oninput="validateEmail(this)"/>
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input type="password" id="reg-password" placeholder="Min. 8 characters" oninput="checkPasswordStrength(this.value)" onkeydown="if(event.key==='Enter')doRegister()"/>
+          <div class="pw-strength" id="pw-strength">
+            <div class="pw-bar-row">
+              <div class="pw-bar" id="bar1"></div>
+              <div class="pw-bar" id="bar2"></div>
+              <div class="pw-bar" id="bar3"></div>
+              <div class="pw-bar" id="bar4"></div>
+            </div>
+            <div class="pw-rules">
+              <div class="pw-rule" id="rule-length"><div class="pw-rule-dot"></div>Min. 8 characters</div>
+              <div class="pw-rule" id="rule-upper"><div class="pw-rule-dot"></div>1 uppercase letter</div>
+              <div class="pw-rule" id="rule-lower"><div class="pw-rule-dot"></div>1 lowercase letter</div>
+              <div class="pw-rule" id="rule-number"><div class="pw-rule-dot"></div>1 number</div>
+              <div class="pw-rule" id="rule-special"><div class="pw-rule-dot"></div>1 special character</div>
+            </div>
+          </div>
+        </div>
+        <button class="btn-submit" id="reg-btn" onclick="doRegister()">CREATE ACCOUNT</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-text">TruthLens &copy; 2025</div>
+    <div class="footer-text">meta-llama/llama-3.3-70b via openrouter</div>
+  </footer>
+</div>
+
+<script>
+  function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', (i===0&&tab==='login')||(i===1&&tab==='register')));
+    document.getElementById('login-section').classList.toggle('active', tab==='login');
+    document.getElementById('register-section').classList.toggle('active', tab==='register');
+  }
+  function clearLoginError() { document.getElementById('login-error').classList.remove('visible'); }
+
+  function triggerGoogleSignIn() {
+    if (window.google && google.accounts) {
+      google.accounts.id.prompt((notification) => {});
+    }
+  }
+
+  async function handleGoogleCredential(response) {
+    const errEl = document.getElementById('login-error');
+    errEl.classList.remove('visible');
+    document.getElementById('google-login-btn').disabled = true;
+    document.getElementById('google-reg-btn').disabled  = true;
+    try {
+      const res = await fetch('/api/auth/google', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        credentials: 'include',
+        body: JSON.stringify({ credential: response.credential })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        errEl.textContent = data.error || 'Google sign-in failed.';
+        errEl.classList.add('visible');
+      } else {
+        window.location.href = '/';
+      }
+    } catch(e) {
+      errEl.textContent = 'Connection error during Google sign-in.';
+      errEl.classList.add('visible');
+    } finally {
+      document.getElementById('google-login-btn').disabled = false;
+      document.getElementById('google-reg-btn').disabled  = false;
+    }
+  }
+
+  function validateName(input) {
+    const valid = input.value.trim().length >= 2;
+    input.classList.toggle('valid', valid);
+    input.classList.toggle('invalid', !valid && input.value.length > 0);
+  }
+  function validateEmail(input) {
+    const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.value.trim());
+    input.classList.toggle('valid', valid);
+    input.classList.toggle('invalid', !valid && input.value.length > 0);
+  }
+
+  const rules = {
+    length:  v => v.length >= 8,
+    upper:   v => /[A-Z]/.test(v),
+    lower:   v => /[a-z]/.test(v),
+    number:  v => /[0-9]/.test(v),
+    special: v => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(v),
+  };
+
+  function checkPasswordStrength(val) {
+    const strengthEl = document.getElementById('pw-strength');
+    if (val.length === 0) { strengthEl.classList.remove('show'); return; }
+    strengthEl.classList.add('show');
+    const ruleMap = {length:'rule-length', upper:'rule-upper', lower:'rule-lower', number:'rule-number', special:'rule-special'};
+    let passed = 0;
+    for (const [key, test] of Object.entries(rules)) {
+      const met = test(val);
+      if (met) passed++;
+      document.getElementById(ruleMap[key]).classList.toggle('met', met);
+    }
+    const bars = ['bar1','bar2','bar3','bar4'];
+    const levels = ['','weak','weak','fair','fair','strong'];
+    bars.forEach((id, i) => {
+      const el = document.getElementById(id);
+      el.className = 'pw-bar';
+      if (i < passed - 1) el.classList.add(levels[passed]);
+    });
+    const input = document.getElementById('reg-password');
+    input.classList.remove('invalid','valid');
+    if (passed === 5) input.classList.add('valid');
+    else if (val.length > 3) input.classList.add('invalid');
+  }
+
+  function getPasswordErrors(val) {
+    const errors = [];
+    if (!rules.length(val))  errors.push('at least 8 characters');
+    if (!rules.upper(val))   errors.push('1 uppercase letter (A-Z)');
+    if (!rules.lower(val))   errors.push('1 lowercase letter (a-z)');
+    if (!rules.number(val))  errors.push('1 number (0-9)');
+    if (!rules.special(val)) errors.push('1 special character (!@#$%...)');
+    return errors;
+  }
+
+  async function doLogin() {
+    const btn = document.getElementById('login-btn');
+    const errEl = document.getElementById('login-error');
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    errEl.classList.remove('visible');
+    if (!email || !password) { errEl.textContent='Please fill in all fields.'; errEl.classList.add('visible'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { errEl.textContent='Please enter a valid email address.'; errEl.classList.add('visible'); return; }
+    btn.disabled = true; btn.textContent = 'SIGNING IN...';
+    try {
+      const res = await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body:JSON.stringify({email, password}) });
+      const data = await res.json();
+      if (!res.ok) { errEl.textContent = data.error || 'Login failed.'; errEl.classList.add('visible'); }
+      else { window.location.href = '/'; }
+    } catch(e) { errEl.textContent = 'Connection error. Is the server running?'; errEl.classList.add('visible'); }
+    finally { btn.disabled = false; btn.textContent = 'SIGN IN'; }
+  }
+
+  async function doRegister() {
+    const btn = document.getElementById('reg-btn');
+    const errEl = document.getElementById('reg-error');
+    const sucEl = document.getElementById('reg-success');
+    const name     = document.getElementById('reg-name').value.trim();
+    const email    = document.getElementById('reg-email').value.trim();
+    const password = document.getElementById('reg-password').value;
+    errEl.classList.remove('visible'); sucEl.classList.remove('visible');
+    if (!name || name.length < 2) { errEl.textContent='Please enter your full name (at least 2 characters).'; errEl.classList.add('visible'); return; }
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { errEl.textContent='Please enter a valid email address.'; errEl.classList.add('visible'); return; }
+    const pwErrors = getPasswordErrors(password);
+    if (pwErrors.length) { errEl.textContent='Password must contain: '+pwErrors.join(', ')+'.'; errEl.classList.add('visible'); return; }
+    btn.disabled = true; btn.textContent = 'CREATING...';
+    try {
+      const res = await fetch('/api/register', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body:JSON.stringify({name, email, password}) });
+      const data = await res.json();
+      if (!res.ok) { errEl.textContent = data.error || 'Registration failed.'; errEl.classList.add('visible'); }
+      else { window.location.href = '/'; }
+    } catch(e) { errEl.textContent = 'Connection error. Is the server running?'; errEl.classList.add('visible'); }
+    finally { btn.disabled = false; btn.textContent = 'CREATE ACCOUNT'; }
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TruthLens — Fact Checker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --black:#0a0a0a;--white:#f5f2eb;--cream:#ede9df;
+      --mid:#6b6b6b;--border:#2a2a2a;--border-light:#3a3a3a;
+      --sidebar:#0f0f0f;--true:#2ecc71;--false:#e74c3c;--uncertain:#f39c12;
+      --mic-active:#e74c3c;
+    }
+    html,body{height:100%;background:var(--black);color:var(--white);font-family:'DM Sans',sans-serif;font-weight:300;overflow:hidden;}
+
+    /* ── Layout ── */
+    .app{display:flex;height:100vh;}
+
+    /* ── Sidebar ── */
+    .sidebar{width:280px;min-width:280px;background:var(--sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column;height:100vh;}
+    .sidebar-header{padding:1.4rem 1.2rem;border-bottom:1px solid var(--border);}
+    .logo{font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:0.08em;line-height:1;}
+    .logo span{color:var(--false);}
+    .tagline{font-size:0.6rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--mid);margin-top:2px;}
+
+    /* user card */
+    .user-card{padding:1rem 1.2rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:0.8rem;}
+    .user-avatar{width:34px;height:34px;border:1px solid var(--border-light);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--white);flex-shrink:0;background:#1a1a1a;}
+    .user-info{flex:1;min-width:0;}
+    .user-name{font-size:0.85rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .user-email{font-size:0.7rem;color:var(--mid);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+    /* history list */
+    .history-label{padding:0.8rem 1.2rem 0.4rem;font-size:0.6rem;letter-spacing:0.25em;text-transform:uppercase;color:var(--mid);display:flex;align-items:center;justify-content:space-between;}
+    .history-count{font-family:'DM Mono',monospace;background:var(--border);padding:0.1rem 0.4rem;font-size:0.6rem;border-radius:2px;}
+    .history-list{flex:1;overflow-y:auto;padding:0 0.6rem;}
+    .history-list::-webkit-scrollbar{width:4px;}
+    .history-list::-webkit-scrollbar-track{background:transparent;}
+    .history-list::-webkit-scrollbar-thumb{background:var(--border);}
+    .history-item{padding:0.7rem 0.8rem;border:1px solid transparent;cursor:pointer;transition:border-color 0.15s;margin-bottom:3px;position:relative;}
+    .history-item:hover{border-color:var(--border);}
+    .history-item:hover .del-btn{opacity:1;}
+    .hi-verdict{font-size:0.6rem;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:2px;font-weight:500;}
+    .hi-verdict.TRUE{color:var(--true);}
+    .hi-verdict.FALSE{color:var(--false);}
+    .hi-verdict.UNCERTAIN{color:var(--uncertain);}
+    .hi-text{font-size:0.78rem;color:var(--mid);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:190px;}
+    .hi-date{font-size:0.65rem;color:#3a3a3a;margin-top:2px;font-family:'DM Mono',monospace;}
+    .del-btn{position:absolute;right:8px;top:50%;transform:translateY(-50%);opacity:0;background:transparent;border:none;color:var(--mid);cursor:pointer;font-size:14px;transition:color 0.15s;line-height:1;padding:2px 4px;}
+    .del-btn:hover{color:var(--false);}
+    .no-history{padding:1.5rem 1.2rem;font-size:0.8rem;color:#3a3a3a;text-align:center;line-height:1.7;}
+
+    /* logout */
+    .sidebar-footer{padding:1rem 1.2rem;border-top:1px solid var(--border);}
+    .btn-logout{width:100%;background:transparent;border:1px solid var(--border);color:var(--mid);font-family:'DM Sans',sans-serif;font-size:0.75rem;letter-spacing:0.15em;text-transform:uppercase;padding:0.7rem;cursor:pointer;transition:all 0.15s;display:flex;align-items:center;justify-content:center;gap:0.5rem;}
+    .btn-logout:hover{border-color:var(--false);color:var(--false);}
+
+    /* ── Main content ── */
+    .main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+    .main-header{border-bottom:1px solid var(--border);padding:1.2rem 2rem;display:flex;align-items:center;justify-content:space-between;}
+    .main-header-title{font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:0.1em;color:var(--mid);}
+    .main-header-user{font-size:0.72rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--mid);}
+    .main-header-user span{color:var(--white);}
+
+    .content{flex:1;overflow-y:auto;padding:2.5rem 2rem;}
+    .content::-webkit-scrollbar{width:4px;}
+    .content::-webkit-scrollbar-thumb{background:var(--border);}
+
+    /* hero */
+    .hero-label{font-size:0.65rem;letter-spacing:0.3em;text-transform:uppercase;color:var(--mid);margin-bottom:0.8rem;}
+    .hero-title{font-family:'Bebas Neue',sans-serif;font-size:clamp(2.5rem,6vw,4.5rem);line-height:0.92;letter-spacing:0.02em;margin-bottom:1.2rem;}
+    .hero-title .line2{color:var(--mid);}
+    .hero-sub{font-size:0.9rem;color:var(--mid);max-width:480px;line-height:1.7;margin-bottom:2.5rem;}
+
+    /* input */
+    .input-label{font-size:0.65rem;letter-spacing:0.25em;text-transform:uppercase;color:var(--mid);margin-bottom:0.5rem;display:block;}
+    .input-wrapper{position:relative;margin-bottom:1rem;}
+    textarea{width:100%;background:transparent;border:1px solid var(--border);color:var(--white);font-family:'DM Sans',sans-serif;font-size:0.95rem;font-weight:300;padding:1.2rem 1.4rem;resize:none;outline:none;line-height:1.6;transition:border-color 0.2s;min-height:110px;}
+    textarea::placeholder{color:#3a3a3a;}
+    textarea:focus{border-color:var(--border-light);}
+    .char-hint{position:absolute;bottom:0.8rem;right:1rem;font-size:0.65rem;color:#3a3a3a;font-family:'DM Mono',monospace;}
+
+    /* ── Language selector row ── */
+    .lang-row{
+      display:flex;align-items:center;gap:0.6rem;margin-bottom:1rem;
+      flex-wrap:wrap;
+    }
+    .lang-row-label{
+      font-size:0.62rem;letter-spacing:0.22em;text-transform:uppercase;
+      color:var(--mid);flex-shrink:0;
+    }
+
+    /* Language buttons */
+    .lang-btn{
+      background:transparent;border:1px solid var(--border);
+      color:var(--mid);font-family:'DM Sans',sans-serif;
+      font-size:0.72rem;letter-spacing:0.1em;
+      padding:0.35rem 0.8rem;cursor:pointer;
+      transition:all 0.15s;
+    }
+    .lang-btn:hover{border-color:var(--border-light);color:var(--white);}
+    .lang-btn.active{
+      border-color:var(--white);color:var(--black);
+      background:var(--white);
+    }
+
+    /* ── Action row (Analyze + Mic) ── */
+    .action-row{display:flex;align-items:center;gap:0.8rem;flex-wrap:wrap;}
+    .btn-analyze{background:var(--white);color:var(--black);border:none;font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:0.15em;padding:0.9rem 2.5rem;cursor:pointer;transition:background 0.15s;}
+    .btn-analyze:hover{background:var(--cream);}
+    .btn-analyze:disabled{opacity:0.4;cursor:not-allowed;}
+
+    /* ── Mic button ── */
+    .mic-btn{
+      width:46px;height:46px;border-radius:50%;
+      background:transparent;border:1px solid var(--border);
+      color:var(--mid);cursor:pointer;
+      display:flex;align-items:center;justify-content:center;
+      transition:all 0.2s;flex-shrink:0;position:relative;
+    }
+    .mic-btn:hover:not(:disabled){border-color:var(--border-light);color:var(--white);}
+    .mic-btn:disabled{opacity:0.3;cursor:not-allowed;}
+    .mic-btn.listening{
+      border-color:var(--mic-active);color:var(--mic-active);
+      animation:mic-pulse 1s ease-in-out infinite;
+    }
+    @keyframes mic-pulse{
+      0%,100%{box-shadow:0 0 0 0 rgba(231,76,60,0.5);}
+      50%     {box-shadow:0 0 0 10px rgba(231,76,60,0);}
+    }
+    .mic-btn svg{width:18px;height:18px;pointer-events:none;}
+
+    /* speech status */
+    .speech-status{
+      font-size:0.68rem;letter-spacing:0.18em;text-transform:uppercase;
+      color:var(--mid);margin-top:0.5rem;min-height:1.2rem;
+      display:flex;align-items:center;gap:0.5rem;
+      transition:color 0.2s;
+    }
+    .speech-status.active{color:var(--mic-active);}
+    .speech-status.success{color:var(--true);}
+    .speech-status.error{color:var(--uncertain);}
+    .speech-dot{
+      width:6px;height:6px;border-radius:50%;
+      background:var(--mic-active);flex-shrink:0;
+      display:none;
+    }
+    .speech-status.active .speech-dot{
+      display:block;
+      animation:blink 0.7s ease-in-out infinite;
+    }
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:0.2}}
+
+    /* interim transcript highlight */
+    textarea.interim{border-color:rgba(231,76,60,0.3);}
+
+    /* waveform visualizer */
+    .waveform-wrap{
+      display:none;align-items:center;gap:2px;height:20px;
+      margin-top:0.4rem;
+    }
+    .waveform-wrap.active{display:flex;}
+    .wave-bar{
+      width:3px;background:var(--mic-active);border-radius:2px;
+      height:4px;transform-origin:bottom center;
+      animation:wave 0.6s ease-in-out infinite;
+      opacity:0.8;
+    }
+    .wave-bar:nth-child(1){animation-delay:0s;}
+    .wave-bar:nth-child(2){animation-delay:0.08s;}
+    .wave-bar:nth-child(3){animation-delay:0.16s;}
+    .wave-bar:nth-child(4){animation-delay:0.24s;}
+    .wave-bar:nth-child(5){animation-delay:0.32s;}
+    .wave-bar:nth-child(6){animation-delay:0.16s;}
+    .wave-bar:nth-child(7){animation-delay:0.08s;}
+    @keyframes wave{
+      0%,100%{height:4px;}
+      50%{height:18px;}
+    }
+
+    /* loading */
+    .loading-bar{height:2px;background:var(--border);margin-top:1rem;overflow:hidden;display:none;}
+    .loading-bar.active{display:block;}
+    .loading-bar::after{content:'';display:block;height:100%;width:40%;background:var(--white);animation:sweep 1.2s ease-in-out infinite;}
+    @keyframes sweep{0%{transform:translateX(-100%)}100%{transform:translateX(350%)}}
+    .loading-text{font-size:0.7rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--mid);margin-top:0.6rem;display:none;text-align:center;}
+    .loading-text.active{display:block;}
+    .error-box{border:1px solid rgba(231,76,60,0.3);padding:0.9rem 1.2rem;color:var(--false);font-size:0.85rem;display:none;margin-top:0.8rem;}
+    .error-box.visible{display:block;}
+
+    /* result */
+    .result-section{opacity:0;transform:translateY(16px);transition:opacity 0.4s,transform 0.4s;pointer-events:none;margin-top:2rem;}
+    .result-section.visible{opacity:1;transform:translateY(0);pointer-events:all;}
+    .result-divider{height:1px;background:var(--border);margin-bottom:1.8rem;}
+    .input-type-badge{display:inline-flex;align-items:center;gap:0.4rem;font-size:0.62rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--mid);border:1px solid var(--border);padding:0.25rem 0.6rem;margin-bottom:1.2rem;}
+    .badge-dot{width:5px;height:5px;border-radius:50%;background:var(--mid);}
+    .verdict-banner{display:flex;align-items:center;gap:1.5rem;padding:2rem 1.5rem;border:1px solid var(--border);margin-bottom:1.5rem;position:relative;overflow:hidden;transition:border-color 0.3s;}
+    .verdict-banner::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;}
+    .verdict-banner.true::before{background:var(--true);}
+    .verdict-banner.false::before{background:var(--false);}
+    .verdict-banner.uncertain::before{background:var(--uncertain);}
+    .verdict-banner.true{border-color:rgba(46,204,113,0.2);}
+    .verdict-banner.false{border-color:rgba(231,76,60,0.2);}
+    .verdict-banner.uncertain{border-color:rgba(243,156,18,0.2);}
+    .verdict-icon{font-size:2rem;flex-shrink:0;line-height:1;}
+    .verdict-label{font-size:0.62rem;letter-spacing:0.3em;text-transform:uppercase;color:var(--mid);margin-bottom:0.2rem;}
+    .verdict-word{font-family:'Bebas Neue',sans-serif;font-size:3rem;line-height:1;letter-spacing:0.05em;}
+    .verdict-word.true{color:var(--true);}
+    .verdict-word.false{color:var(--false);}
+    .verdict-word.uncertain{color:var(--uncertain);}
+    .info-grid{display:grid;grid-template-columns:1fr;gap:0.8rem;}
+    .info-block{border:1px solid var(--border);padding:1.4rem;}
+    .info-block-label{font-size:0.6rem;letter-spacing:0.28em;text-transform:uppercase;color:var(--mid);margin-bottom:0.7rem;display:flex;align-items:center;gap:0.5rem;}
+    .info-block-label::after{content:'';flex:1;height:1px;background:var(--border);}
+    .info-block p{font-size:0.9rem;line-height:1.75;color:#c8c4ba;}
+    .corrected-text{font-family:'DM Mono',monospace;font-size:0.82rem;line-height:1.7;color:var(--white);background:#141414;padding:0.9rem 1.1rem;border-left:2px solid var(--mid);}
+
+    /* TTS button */
+    .tts-btn{
+      display:inline-flex;align-items:center;gap:0.4rem;
+      background:transparent;border:1px solid var(--border);
+      color:var(--mid);font-family:'DM Sans',sans-serif;
+      font-size:0.7rem;letter-spacing:0.15em;text-transform:uppercase;
+      padding:0.4rem 0.8rem;cursor:pointer;transition:all 0.15s;
+      margin-top:0.8rem;
+    }
+    .tts-btn:hover{border-color:var(--border-light);color:var(--white);}
+    .tts-btn.speaking{border-color:var(--true);color:var(--true);}
+    .tts-btn svg{width:13px;height:13px;}
+
+    /* detail panel */
+    .detail-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center;}
+    .detail-overlay.open{display:flex;}
+    .detail-panel{background:var(--sidebar);border:1px solid var(--border);width:100%;max-width:560px;max-height:80vh;overflow-y:auto;padding:2rem;}
+    .detail-close{background:transparent;border:1px solid var(--border);color:var(--mid);font-size:0.7rem;letter-spacing:0.15em;text-transform:uppercase;padding:0.4rem 0.8rem;cursor:pointer;float:right;transition:color 0.15s;}
+    .detail-close:hover{color:var(--white);}
+
+    /* toast */
+    .toast{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--border-light);color:var(--white);font-size:0.78rem;letter-spacing:0.1em;padding:0.7rem 1.2rem;z-index:200;opacity:0;transform:translateY(8px);transition:all 0.25s;pointer-events:none;}
+    .toast.show{opacity:1;transform:translateY(0);}
+
+    /* speech not supported banner */
+    .speech-unsupported{
+      display:none;font-size:0.72rem;color:var(--uncertain);
+      border:1px solid rgba(243,156,18,0.2);padding:0.6rem 0.9rem;
+      margin-top:0.5rem;letter-spacing:0.05em;
+    }
+    .speech-unsupported.visible{display:block;}
+
+    /* language indicator badge on result */
+    .lang-badge{
+      display:inline-flex;align-items:center;gap:0.4rem;
+      font-size:0.62rem;letter-spacing:0.18em;text-transform:uppercase;
+      color:var(--mid);border:1px solid var(--border);
+      padding:0.2rem 0.55rem;margin-left:0.5rem;
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">Truth<span>Lens</span></div>
+      <div class="tagline">Fact verification engine</div>
+    </div>
+
+    <div class="user-card">
+      <div class="user-avatar" id="avatar-initials">—</div>
+      <div class="user-info">
+        <div class="user-name" id="sidebar-name">Loading…</div>
+        <div class="user-email" id="sidebar-email">—</div>
+      </div>
+    </div>
+
+    <div class="history-label">
+      Recent analyses
+      <span class="history-count" id="history-count">0</span>
+    </div>
+    <div class="history-list" id="history-list">
+      <div class="no-history">No analyses yet</div>
+    </div>
+
+    <div class="sidebar-footer">
+      <button class="btn-logout" id="logout-btn" onclick="doLogout()">
+        ↩ &nbsp;Sign Out
+      </button>
+    </div>
+  </aside>
+
+  <!-- ── Main ── -->
+  <main class="main">
+    <div class="main-header">
+      <div class="main-header-title">Claim Verification</div>
+      <div class="main-header-user">Signed in as <span id="header-email">—</span></div>
+    </div>
+
+    <div class="content">
+      <div class="hero-label">// TruthLens v4.1 — with Voice + Language Output</div>
+      <h1 class="hero-title">IS IT<br><span class="line2">THE TRUTH?</span></h1>
+      <p class="hero-sub">Paste a news claim, article URL, or <strong style="font-weight:500;color:var(--white)">speak directly</strong> into the mic. Choose your output language — the verdict and explanation will be returned in that language.</p>
+
+      <label class="input-label" for="claim-input">Enter claim, paste URL, or use voice input</label>
+      <div class="input-wrapper">
+        <textarea id="claim-input" placeholder="e.g. 'Scientists discover water on Mars' or https://… or click the mic 🎙" maxlength="2000"></textarea>
+        <span class="char-hint" id="char-count">0 / 2000</span>
+      </div>
+
+      <!-- ── OUTPUT LANGUAGE selector ── -->
+      <!--
+        These buttons control the language of the AI's output (explanation + corrected statement).
+        They are completely separate from the speech recognition language (mic input).
+        Selecting "Telugu" here means: no matter what language the user types or speaks,
+        the response from the AI will be in Telugu.
+      -->
+      <div class="lang-row">
+        <span class="lang-row-label">Output language:</span>
+        <button class="lang-btn active" data-lang="English"  onclick="selectOutputLang(this)">English</button>
+        <button class="lang-btn"        data-lang="Tamil"    onclick="selectOutputLang(this)">தமிழ் Tamil</button>
+        <button class="lang-btn"        data-lang="Hindi"    onclick="selectOutputLang(this)">हिंदी Hindi</button>
+        <button class="lang-btn"        data-lang="Telugu"   onclick="selectOutputLang(this)">తెలుగు Telugu</button>
+      </div>
+
+      <!-- ── Action row: Analyze + Mic ── -->
+      <!--
+        The mic button's language dropdown ONLY controls the speech recognition language
+        (which language the browser listens for). It has nothing to do with output language.
+        Output language is controlled by the buttons above.
+      -->
+      <div class="action-row">
+        <button class="btn-analyze" id="analyze-btn" onclick="analyze()">ANALYZE CLAIM</button>
+
+        <!-- Mic button -->
+        <button class="mic-btn" id="mic-btn" title="Click to speak your claim" onclick="toggleSpeech()">
+          <svg id="mic-icon-default" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="2" width="6" height="11" rx="3"/>
+            <path d="M5 10a7 7 0 0014 0"/>
+            <line x1="12" y1="19" x2="12" y2="22"/>
+            <line x1="8" y1="22" x2="16" y2="22"/>
+          </svg>
+          <svg id="mic-icon-stop" viewBox="0 0 24 24" fill="currentColor" style="display:none;">
+            <rect x="6" y="6" width="12" height="12" rx="2"/>
+          </svg>
+        </button>
+
+        <!-- Speech recognition language (mic input only — NOT output language) -->
+        <select id="speech-lang-select" title="Speech recognition input language"
+          style="background:transparent;border:1px solid var(--border);color:var(--mid);font-family:'DM Sans',sans-serif;font-size:0.68rem;letter-spacing:0.08em;padding:0.4rem 0.6rem;cursor:pointer;outline:none;">
+          <option value="en-US">🎙 EN</option>
+          <option value="ta-IN">🎙 தமிழ்</option>
+          <option value="hi-IN">🎙 हिंदी</option>
+          <option value="te-IN">🎙 తెలుగు</option>
+        </select>
+      </div>
+
+      <!-- small hint -->
+      <div style="font-size:0.62rem;color:#3a3a3a;letter-spacing:0.1em;margin-top:0.5rem;">
+        🎙 dropdown = mic recognition language &nbsp;|&nbsp; Output language buttons above control AI response language
+      </div>
+
+      <!-- Waveform visualizer -->
+      <div class="waveform-wrap" id="waveform">
+        <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+        <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+      </div>
+
+      <!-- Speech status -->
+      <div class="speech-status" id="speech-status">
+        <div class="speech-dot"></div>
+        <span id="speech-status-text"></span>
+      </div>
+
+      <!-- Unsupported browser warning -->
+      <div class="speech-unsupported" id="speech-unsupported">
+        ⚠ Speech recognition requires Chrome, Edge, or Safari. Firefox needs manual activation.
+      </div>
+
+      <div class="loading-bar" id="loading-bar"></div>
+      <div class="loading-text" id="loading-text">Analyzing — this may take a few seconds</div>
+      <div class="error-box" id="error-box"></div>
+
+      <!-- ── Result section ── -->
+      <div class="result-section" id="result-section">
+        <div class="result-divider"></div>
+        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:0.4rem;margin-bottom:1.2rem;">
+          <div class="input-type-badge" style="margin-bottom:0;"><span class="badge-dot"></span><span id="input-type-label">claim</span></div>
+          <span class="lang-badge" id="result-lang-badge">English</span>
+        </div>
+        <div class="verdict-banner" id="verdict-banner">
+          <div class="verdict-icon" id="verdict-icon"></div>
+          <div>
+            <div class="verdict-label">Verdict</div>
+            <div class="verdict-word" id="verdict-word"></div>
+          </div>
+        </div>
+        <div class="info-grid">
+          <div class="info-block">
+            <div class="info-block-label">Explanation</div>
+            <p id="explanation-text"></p>
+            <button class="tts-btn" id="tts-btn" onclick="toggleTTS()" title="Read verdict aloud">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+              </svg>
+              Read Aloud
+            </button>
+          </div>
+          <div class="info-block" id="corrected-block">
+            <div class="info-block-label">Corrected statement</div>
+            <div class="corrected-text" id="corrected-text"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Detail overlay -->
+<div class="detail-overlay" id="detail-overlay" onclick="closeDetail(event)">
+  <div class="detail-panel" id="detail-panel">
+    <button class="detail-close" onclick="document.getElementById('detail-overlay').classList.remove('open')">Close</button>
+    <div id="detail-content"></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+  // ════════════════════════════════════════
+  //  STATE
+  // ════════════════════════════════════════
+
+  // Tracks the output language chosen by the user (the language buttons).
+  // This is sent to the backend as `force_language` in every /analyze request.
+  let selectedOutputLanguage = 'English';
+
+  // Tracks whether the last input came from voice (for input_type_override).
+  let lastInputWasVoice = false;
+
+  // ── Char counter ──
+  const textarea = document.getElementById('claim-input');
+  textarea.addEventListener('input', () => {
+    document.getElementById('char-count').textContent = `${textarea.value.length} / 2000`;
+  });
+  textarea.addEventListener('keydown', e => { if(e.ctrlKey && e.key==='Enter') analyze(); });
+
+  // ── Toast ──
+  function showToast(msg, duration = 2500) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), duration);
+  }
+
+  // ════════════════════════════════════════
+  //  OUTPUT LANGUAGE SELECTOR
+  //  (the four language buttons above the action row)
+  // ════════════════════════════════════════
+
+  function selectOutputLang(btn) {
+    // Remove active from all lang buttons
+    document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+    // Activate clicked button
+    btn.classList.add('active');
+    // Store selection
+    selectedOutputLanguage = btn.dataset.lang;
+
+    // If speech recognition is idle, also sync the speech recognition
+    // language dropdown to match. This is a convenience — user can still
+    // change the mic language independently.
+    const langToSpeech = {
+      'English': 'en-US',
+      'Tamil':   'ta-IN',
+      'Hindi':   'hi-IN',
+      'Telugu':  'te-IN'
+    };
+    const speechSelect = document.getElementById('speech-lang-select');
+    if (langToSpeech[selectedOutputLanguage]) {
+      speechSelect.value = langToSpeech[selectedOutputLanguage];
+    }
+
+    showToast(`Output language set to ${selectedOutputLanguage}`);
+  }
+
+  // ── Init: load user info + history ──
+  async function init() {
+    try {
+      const res = await fetch('/api/me', { credentials: 'include' });
+      if (!res.ok) { window.location.href = '/login'; return; }
+      const user = await res.json();
+      document.getElementById('sidebar-name').textContent = user.name || 'User';
+      document.getElementById('sidebar-email').textContent = user.email || '';
+      document.getElementById('header-email').textContent = user.email || '';
+      const initial = (user.name || 'U').charAt(0).toUpperCase();
+      document.getElementById('avatar-initials').textContent = initial;
+    } catch(e) {
+      window.location.href = '/login';
+      return;
+    }
+    checkSpeechSupport();
+    loadHistory();
+  }
+
+  // ── History ──
+  async function loadHistory() {
+    try {
+      const res = await fetch('/api/history', { credentials: 'include' });
+      if (!res.ok) return;
+      const items = await res.json();
+      document.getElementById('history-count').textContent = items.length;
+      const list = document.getElementById('history-list');
+      if (!items.length) {
+        list.innerHTML = '<div class="no-history">No analyses yet.<br>Submit a claim above to get started.</div>';
+        return;
+      }
+      list.innerHTML = items.map(item => {
+        const safe = encodeURIComponent(JSON.stringify(item));
+        const preview = item.input_text.substring(0, 55) + (item.input_text.length > 55 ? '…' : '');
+        const voiceTag = item.input_type === 'voice' ? ' 🎙' : '';
+        const langTag  = item.language && item.language !== 'English' ? ` [${item.language}]` : '';
+        return `
+          <div class="history-item" onclick="showDetail(decodeAndParse('${safe}'))">
+            <div class="hi-verdict ${item.verdict}">${item.verdict}</div>
+            <div class="hi-text">${escapeHtml(preview)}${voiceTag}${langTag}</div>
+            <div class="hi-date">${item.created_at}</div>
+            <button class="del-btn" onclick="deleteHistory(event, ${item.id})" title="Delete">✕</button>
+          </div>`;
+      }).join('');
+    } catch(e) { console.error('History load error:', e); }
+  }
+
+  function decodeAndParse(encoded) { return JSON.parse(decodeURIComponent(encoded)); }
+  function escapeHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  async function deleteHistory(e, id) {
+    e.stopPropagation();
+    try {
+      const res = await fetch(`/api/history/${id}`, { method: 'DELETE', credentials: 'include' });
+      if (res.ok) { showToast('Entry deleted'); loadHistory(); }
+    } catch(err) { showToast('Delete failed'); }
+  }
+
+  function showDetail(item) {
+    const v = item.verdict.toLowerCase();
+    const icons = { true: '✓', false: '✗', uncertain: '?' };
+    const colorVar = v==='true' ? 'var(--true)' : v==='false' ? 'var(--false)' : 'var(--uncertain)';
+    const inputTypeLabel = item.input_type === 'voice' ? 'VOICE CLAIM 🎙' : item.input_type.toUpperCase();
+    const langLabel = item.language ? ` · ${item.language}` : '';
+    document.getElementById('detail-content').innerHTML = `
+      <div style="margin-bottom:1.5rem;">
+        <div style="font-size:0.6rem;letter-spacing:0.25em;text-transform:uppercase;color:var(--mid);margin-bottom:0.5rem;">${item.created_at} &nbsp;·&nbsp; ${inputTypeLabel}${langLabel}</div>
+        <div style="font-size:0.82rem;color:#c8c4ba;line-height:1.65;margin-bottom:1.2rem;word-break:break-word;">${escapeHtml(item.input_text)}</div>
+        <div style="display:flex;align-items:center;gap:1rem;padding:1.2rem;border:1px solid var(--border);margin-bottom:1.2rem;">
+          <span style="font-size:1.8rem;">${icons[v]||'?'}</span>
+          <div>
+            <div style="font-size:0.6rem;letter-spacing:0.25em;text-transform:uppercase;color:var(--mid);">Verdict</div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:${colorVar};">${item.verdict}</div>
+          </div>
+        </div>
+        <div style="font-size:0.6rem;letter-spacing:0.25em;text-transform:uppercase;color:var(--mid);margin-bottom:0.5rem;">Explanation</div>
+        <p style="font-size:0.88rem;color:#c8c4ba;line-height:1.7;margin-bottom:1.2rem;">${escapeHtml(item.explanation)}</p>
+        <div style="font-size:0.6rem;letter-spacing:0.25em;text-transform:uppercase;color:var(--mid);margin-bottom:0.5rem;">Corrected statement</div>
+        <div style="font-family:'DM Mono',monospace;font-size:0.8rem;color:var(--white);background:#141414;padding:0.8rem 1rem;border-left:2px solid var(--mid);line-height:1.7;word-break:break-word;">${escapeHtml(item.corrected_statement)}</div>
+      </div>`;
+    document.getElementById('detail-overlay').classList.add('open');
+  }
+
+  function closeDetail(e) {
+    if (e.target === document.getElementById('detail-overlay'))
+      document.getElementById('detail-overlay').classList.remove('open');
+  }
+
+  // ════════════════════════════════════════
+  //  ANALYZE
+  // ════════════════════════════════════════
+
+  async function analyze() {
+    const input = textarea.value.trim();
+    if (!input) { showToast('Please enter a claim, URL, or use voice input'); return; }
+
+    const btn = document.getElementById('analyze-btn');
+    const loadingBar = document.getElementById('loading-bar');
+    const loadingText = document.getElementById('loading-text');
+    const errorBox = document.getElementById('error-box');
+    const resultSection = document.getElementById('result-section');
+
+    // Stop TTS if currently speaking
+    if (isSpeaking) { window.speechSynthesis.cancel(); isSpeaking = false; }
+
+    btn.disabled = true;
+    btn.textContent = 'ANALYZING...';
+    loadingBar.classList.add('active');
+    loadingText.classList.add('active');
+    errorBox.classList.remove('visible');
+    resultSection.classList.remove('visible');
+
+    // Capture and reset the voice flag
+    const inputTypeOverride = lastInputWasVoice ? 'voice' : undefined;
+    lastInputWasVoice = false;
+
+    try {
+      const body = { input };
+      if (inputTypeOverride) body.input_type_override = inputTypeOverride;
+
+      // ── KEY CHANGE: always send the selected output language to the backend ──
+      body.force_language = selectedOutputLanguage;
+
+      const res = await fetch('/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || 'Analysis failed');
+      renderResult(data);
+      loadHistory();
+    } catch(err) {
+      errorBox.textContent = `Error: ${err.message}`;
+      errorBox.classList.add('visible');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'ANALYZE CLAIM';
+      loadingBar.classList.remove('active');
+      loadingText.classList.remove('active');
+    }
+  }
+
+  function renderResult(data) {
+    const v = data.verdict.toLowerCase();
+    const icons = { true: '✓', false: '✗', uncertain: '?' };
+    const banner = document.getElementById('verdict-banner');
+    banner.className = `verdict-banner ${v}`;
+    document.getElementById('verdict-icon').textContent = icons[v] || '?';
+    const wEl = document.getElementById('verdict-word');
+    wEl.textContent = data.verdict;
+    wEl.className = `verdict-word ${v}`;
+    document.getElementById('explanation-text').textContent = data.explanation;
+    document.getElementById('corrected-text').textContent = data.corrected_statement;
+
+    const typeLabel = data.input_type === 'voice'
+      ? 'Voice Claim 🎙'
+      : data.input_type === 'article' ? 'Article URL' : 'Text Claim';
+    document.getElementById('input-type-label').textContent = typeLabel;
+
+    // Show which language the result is in
+    document.getElementById('result-lang-badge').textContent = data.language || 'English';
+
+    const cb = document.getElementById('corrected-block');
+    cb.style.display = (v==='true' && data.corrected_statement.toLowerCase().includes('accurate')) ? 'none' : 'block';
+
+    // Store for TTS; use language from result
+    window._lastVerdictText = `Verdict: ${data.verdict}. ${data.explanation}`;
+    window._lastResultLanguage = data.language || 'English';
+
+    setTimeout(() => {
+      document.getElementById('result-section').classList.add('visible');
+      document.getElementById('result-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+  }
+
+  // ════════════════════════════════════════
+  //  SPEECH-TO-TEXT MODULE
+  //
+  //  IMPORTANT CHANGE vs v4.0:
+  //  Voice transcription NEVER auto-analyzes anymore.
+  //  When speech ends, the text is placed into the textarea
+  //  and the status says "Ready — click ANALYZE CLAIM".
+  //  The user must manually click the Analyze button.
+  // ════════════════════════════════════════
+
+  let recognition    = null;
+  let isListening    = false;
+  let speechSupported = false;
+
+  function checkSpeechSupport() {
+    speechSupported = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+    const micBtn  = document.getElementById('mic-btn');
+    const warning = document.getElementById('speech-unsupported');
+    if (!speechSupported) {
+      micBtn.disabled = true;
+      warning.classList.add('visible');
+    }
+  }
+
+  function setSpeechStatus(msg, mode='') {
+    const el   = document.getElementById('speech-status');
+    const text = document.getElementById('speech-status-text');
+    el.className = 'speech-status' + (mode ? ' ' + mode : '');
+    text.textContent = msg;
+  }
+
+  function setListeningUI(on) {
+    const micBtn   = document.getElementById('mic-btn');
+    const waveform = document.getElementById('waveform');
+    const iconDef  = document.getElementById('mic-icon-default');
+    const iconStop = document.getElementById('mic-icon-stop');
+
+    if (on) {
+      micBtn.classList.add('listening');
+      waveform.classList.add('active');
+      iconDef.style.display  = 'none';
+      iconStop.style.display = 'block';
+    } else {
+      micBtn.classList.remove('listening');
+      waveform.classList.remove('active');
+      iconDef.style.display  = 'block';
+      iconStop.style.display = 'none';
+    }
+  }
+
+  function buildRecognition() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const r = new SpeechRecognition();
+
+    r.continuous      = false;
+    r.interimResults  = true;
+    r.maxAlternatives = 1;
+    // Use the mic input language dropdown (separate from output language)
+    r.lang = document.getElementById('speech-lang-select').value;
+
+    r.onstart = () => {
+      isListening = true;
+      setListeningUI(true);
+      setSpeechStatus('Listening… speak your claim', 'active');
+      textarea.classList.add('interim');
+      textarea.placeholder = 'Listening…';
+    };
+
+    r.onspeechstart = () => {
+      setSpeechStatus('Speech detected…', 'active');
+    };
+
+    r.onresult = (e) => {
+      let interim = '', final = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+        e.results[i].isFinal ? (final += t) : (interim += t);
+      }
+      textarea.value = final || interim;
+      document.getElementById('char-count').textContent = `${textarea.value.length} / 2000`;
+    };
+
+    r.onspeechend = () => {
+      setSpeechStatus('Processing…', 'active');
+    };
+
+    r.onend = () => {
+      isListening = false;
+      setListeningUI(false);
+      textarea.classList.remove('interim');
+      textarea.placeholder = "e.g. 'Scientists discover water on Mars' or https://… or click the mic 🎙";
+
+      const val = textarea.value.trim();
+      if (val) {
+        // ── CHANGED: set voice flag but DO NOT auto-analyze ──
+        lastInputWasVoice = true;
+        setSpeechStatus('✓ Transcription complete — click ANALYZE CLAIM to proceed', 'success');
+        // Clear the status after a few seconds so it doesn't sit there forever
+        setTimeout(() => {
+          // Only clear if still showing the success message (don't clobber a new listening session)
+          const currentText = document.getElementById('speech-status-text').textContent;
+          if (currentText.includes('ANALYZE')) setSpeechStatus('');
+        }, 5000);
+      } else {
+        setSpeechStatus('No speech detected — try again', 'error');
+        setTimeout(() => setSpeechStatus(''), 3000);
+      }
+    };
+
+    r.onerror = (e) => {
+      isListening = false;
+      setListeningUI(false);
+      textarea.classList.remove('interim');
+
+      const errorMessages = {
+        'not-allowed':         'Microphone permission denied — allow access in browser settings',
+        'no-speech':           'No speech detected — please try again',
+        'network':             'Network error during speech recognition',
+        'audio-capture':       'No microphone found — check your device',
+        'service-not-allowed': 'Speech service blocked — check browser settings',
+        'aborted':             '',
+      };
+
+      const msg = errorMessages[e.error] ?? `Speech error: ${e.error}`;
+      if (msg) {
+        setSpeechStatus(msg, 'error');
+        setTimeout(() => setSpeechStatus(''), 4000);
+        showToast(msg, 3500);
+      } else {
+        setSpeechStatus('');
+      }
+    };
+
+    return r;
+  }
+
+  function toggleSpeech() {
+    if (!speechSupported) {
+      showToast('Speech recognition not supported — use Chrome or Edge');
+      return;
+    }
+
+    if (isListening) {
+      if (recognition) recognition.stop();
+      return;
+    }
+
+    try {
+      recognition = buildRecognition();
+      recognition.start();
+    } catch(err) {
+      setSpeechStatus(`Could not start microphone: ${err.message}`, 'error');
+      showToast('Could not start microphone', 3000);
+    }
+  }
+
+  // Sync speech lang dropdown when user changes it manually
+  document.getElementById('speech-lang-select').addEventListener('change', () => {
+    if (isListening) {
+      recognition.stop();
+      showToast('Language changed — restart mic to apply');
+    }
+  });
+
+  // ════════════════════════════════════════
+  //  TEXT-TO-SPEECH MODULE
+  // ════════════════════════════════════════
+
+  let ttsUtterance = null;
+  let isSpeaking   = false;
+
+  function toggleTTS() {
+    if (!window.speechSynthesis) {
+      showToast('Text-to-speech not supported in this browser');
+      return;
+    }
+
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      isSpeaking = false;
+      resetTTSBtn();
+      return;
+    }
+
+    const text = window._lastVerdictText || document.getElementById('explanation-text').textContent;
+    if (!text) { showToast('No result to read'); return; }
+
+    ttsUtterance = new SpeechSynthesisUtterance(text);
+
+    // Use the language of the result (not the output selector, in case they differ)
+    const langMap = { 'English': 'en-US', 'Tamil': 'ta-IN', 'Hindi': 'hi-IN', 'Telugu': 'te-IN' };
+    ttsUtterance.lang  = langMap[window._lastResultLanguage || 'English'] || 'en-US';
+    ttsUtterance.rate  = 0.95;
+    ttsUtterance.pitch = 1;
+
+    ttsUtterance.onstart = () => {
+      isSpeaking = true;
+      const btn = document.getElementById('tts-btn');
+      btn.classList.add('speaking');
+      btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Stop`;
+    };
+
+    ttsUtterance.onend = ttsUtterance.onerror = () => {
+      isSpeaking = false;
+      resetTTSBtn();
+    };
+
+    window.speechSynthesis.speak(ttsUtterance);
+  }
+
+  function resetTTSBtn() {
+    const btn = document.getElementById('tts-btn');
+    btn.classList.remove('speaking');
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg> Read Aloud`;
+  }
+
+  // ── Logout ──
+  async function doLogout() {
+    if (isSpeaking) window.speechSynthesis.cancel();
+    if (isListening && recognition) recognition.stop();
+    const btn = document.getElementById('logout-btn');
+    btn.textContent = '↩  Signing out…';
+    btn.disabled = true;
+    try { await fetch('/api/logout', { method: 'POST', credentials: 'include' }); } catch(e) {}
+    window.location.href = '/login';
+  }
+
+  // ── Boot ──
+  init();
+</script>
+</body>
+</html>
